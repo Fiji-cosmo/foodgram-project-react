@@ -3,16 +3,18 @@ from django.db import models
 
 from users.models import User
 
+MAX_LENGTH = 200
+
 
 class Ingredient(models.Model):
     """Модель ингредиентов."""
     name = models.CharField(
         verbose_name='Название ингридиента',
-        max_length=200,
+        max_length=MAX_LENGTH,
     )
     measurement_unit = models.CharField(
         verbose_name='Еденица измерения',
-        max_length=200,
+        max_length=MAX_LENGTH,
     )
 
     class Meta:
@@ -27,14 +29,14 @@ class Ingredient(models.Model):
         ]
 
     def __str__(self):
-        return self.name
+        return f'{self.name} , {self.measurement_unit}'
 
 
 class Tag(models.Model):
     """Модель тегов."""
     name = models.CharField(
         verbose_name='Название тега',
-        max_length=200,
+        max_length=MAX_LENGTH,
         unique=True,
     )
     color = models.CharField(
@@ -45,7 +47,7 @@ class Tag(models.Model):
     )
     slug = models.SlugField(
         verbose_name='Адрес тега',
-        max_length=200,
+        max_length=MAX_LENGTH,
         unique=True,
         validators=(
             RegexValidator(
@@ -74,7 +76,7 @@ class Recipe(models.Model):
     )
     name = models.CharField(
         verbose_name='Название блюда',
-        max_length=200
+        max_length=MAX_LENGTH
     )
     image = models.ImageField(
         verbose_name='Картинка блюда',
@@ -109,7 +111,7 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ['-pub_date']
+        ordering = ('-pub_date',)
 
     def __str__(self):
         return self.name
@@ -174,7 +176,7 @@ class FavoriteRecipe(models.Model):
         ]
         verbose_name = 'Избранный рецепт'
         verbose_name_plural = 'Избранные рецепты'
-        ordering = ['id']
+        ordering = ('id',)
 
     def __str__(self):
         return f'{self.user.username} - {self.recipe.name}'

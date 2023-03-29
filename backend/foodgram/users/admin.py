@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import Subscribe, User
 
-
 EMPTY_VALUE_DISPLAY = '-пусто-'
 
 

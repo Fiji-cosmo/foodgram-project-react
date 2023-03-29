@@ -2,11 +2,19 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from rest_framework import serializers
+from rest_framework import serializers, validators
 
 from recipes.models import (FavoriteRecipe, Ingredient, Recipe,
                             RecipeIngredient, ShoppingCart, Tag)
 from users.models import User
+
+FIELDS_USER = (
+    'id',
+    'email',
+    'username',
+    'first_name',
+    'last_name',
+)
 
 
 class UserGETSerializer(UserSerializer):
@@ -15,14 +23,7 @@ class UserGETSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'is_subscribed',
-        )
+        fields = FIELDS_USER + ('is_subscribed',)
         read_only_fields = ('is_subscribed',)
 
     def get_is_subscribed(self, author):
@@ -37,26 +38,19 @@ class UserPOSTSerializer(UserCreateSerializer):
     """Сериализатор для создания пользователей."""
     class Meta:
         model = User
-        fields = (
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'password'
-        )
+        fields = fields = FIELDS_USER + ('password',)
         extra_kwargs = {
             'email': {'required': True, 'allow_blank': False},
             'first_name': {'required': True, 'allow_blank': False},
             'last_name': {'required': True, 'allow_blank': False},
         }
 
-    def validate(self, obj):
-        valid_username = [
+    def validate_username(self, obj):
+        invalid_username = [
             'me', 'set_password',
             'subscriptions', 'subscribe'
         ]
-        if self.initial_data.get('username') in valid_username:
+        if self.initial_data.get('username') in invalid_username:
             raise serializers.ValidationError(
                 {'username': 'Вы не можете использовать этот username.'}
             )
@@ -97,12 +91,11 @@ class SetPasswordSerializer(serializers.Serializer):
 class RecipeSerializer(serializers.ModelSerializer):
     """Сериализатор для рецептов без поля ингредиет."""
     image = Base64ImageField(read_only=True)
-    name = serializers.ReadOnlyField()
-    cooking_time = serializers.ReadOnlyField()
 
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
+        read_only_fields = ('id', 'name', 'image', 'cooking_time')
 
 
 class SubscriptionsGETSerializer(serializers.ModelSerializer):
@@ -336,3 +329,46 @@ class RecipePOSTserializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return RecipeGETSerializer(instance, context=self.context).data
+
+
+class FavoriteRecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор добавления рецептов в избранное."""
+
+    class Meta:
+        model = FavoriteRecipe
+        fields = ('user', 'recipe')
+        validators = [
+            validators.UniqueTogetherValidator(
+                queryset=FavoriteRecipe.objects.all(),
+                fields=['user', 'recipe'],
+                message='Рецепт уже в избранном'
+            )
+        ]
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        return RecipeSerializer(
+            instance.recipe,
+            context={'request': request}
+        ).data
+
+
+class ShopingCartRecipeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+        validators = [
+            validators.UniqueTogetherValidator(
+                queryset=ShoppingCart.objects.all(),
+                fields=['user', 'recipe'],
+                message='Рецепт уже в списке покупок'
+            )
+        ]
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        return RecipeSerializer(
+            instance.recipe,
+            context={'request': request}
+        ).data

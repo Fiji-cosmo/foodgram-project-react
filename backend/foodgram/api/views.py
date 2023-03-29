@@ -2,6 +2,7 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from djoser.views import UserViewSet
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,18 +11,21 @@ from rest_framework.response import Response
 from recipes.models import (FavoriteRecipe, Ingredient, Recipe,
                             RecipeIngredient, ShoppingCart, Tag)
 from users.models import Subscribe, User
+
 from .filters import RecipeFilter
-from .mixins import TegIngredientViewSet, UserMixinViewSet
+from .mixins import TegIngredientViewSet
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
-from .serializers import (IngredientSerializer, RecipeGETSerializer,
-                          RecipePOSTserializer, RecipeSerializer,
-                          SetPasswordSerializer, SubscriptionsGETSerializer,
+from .serializers import (FavoriteRecipeSerializer, IngredientSerializer,
+                          RecipeGETSerializer, RecipePOSTserializer,
+                          SetPasswordSerializer, ShopingCartRecipeSerializer,
+                          SubscriptionsGETSerializer,
                           SubscriptionsPOSTSerializer, TagSerializer,
                           UserGETSerializer, UserPOSTSerializer)
+from .utils import post_and_delete
 
 
-class UserViewSet(UserMixinViewSet):
+class CustomUserViewSet(UserViewSet):
     """Вьюсет для пользователей."""
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
@@ -75,25 +79,20 @@ class UserViewSet(UserMixinViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def subscribe(self, request, **kwargs):
-        author = get_object_or_404(User, id=kwargs['pk'])
-
+        user = request.user
+        author_id = self.kwargs.get('id')
+        author = get_object_or_404(User, id=author_id)
         if request.method == 'POST':
             serializer = SubscriptionsPOSTSerializer(
-                author, data=request.data, context={"request": request})
+                author, data=request.data, context={'request': request}
+            )
             serializer.is_valid(raise_exception=True)
-            Subscribe.objects.create(user=request.user, author=author)
+            Subscribe.objects.create(user=user, author=author)
             return Response(
                 serializer.data, status=status.HTTP_201_CREATED
             )
-
-        if request.method == 'DELETE':
-            get_object_or_404(
-                Subscribe, user=request.user, author=author
-            ).delete()
-            return Response(
-                {'detail': 'Успешная отписка'},
-                status=status.HTTP_204_NO_CONTENT
-            )
+        get_object_or_404(Subscribe, user=user, author=author).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TagViewSet(TegIngredientViewSet):
@@ -133,36 +132,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
-    def favorite(self, request, **kwargs):
-        recipe = get_object_or_404(Recipe, id=kwargs['pk'])
-
-        if request.method == 'POST':
-            serializer = RecipeSerializer(
-                recipe, data=request.data, context={'request': request}
-            )
-            serializer.is_valid(raise_exception=True)
-            if not FavoriteRecipe.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                FavoriteRecipe.objects.create(
-                    user=request.user, recipe=recipe
-                )
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED
-                )
-            return Response(
-                {'errors': 'Вы уже добавили рецепт в избранное.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if request.method == 'DELETE':
-            get_object_or_404(
-                FavoriteRecipe, user=request.user, recipe=recipe
-            ).delete()
-            return Response(
-                {'detail': 'Вы удалили рецепт из изрбранного.'},
-                status=status.HTTP_204_NO_CONTENT
-            )
+    def favorite(self, request, pk):
+        # Я так понял нужно использовать метод annotate(), попытался понять, но так и не получилось пока-что
+        return post_and_delete(
+            FavoriteRecipeSerializer, FavoriteRecipe, request, pk
+        )
 
     @action(
         methods=['POST', 'DELETE'],
@@ -170,36 +144,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,),
         pagination_class=None
     )
-    def shopping_cart(self, request, **kwargs):
-        recipe = get_object_or_404(Recipe, id=kwargs['pk'])
-
-        if request.method == 'POST':
-            serializer = RecipeSerializer(
-                recipe, data=request.data, context={'request': request}
-            )
-            serializer.is_valid(raise_exception=True)
-            if not ShoppingCart.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                ShoppingCart.objects.create(
-                    user=request.user, recipe=recipe
-                )
-                return Response(
-                    serializer.data, status=status.HTTP_201_CREATED
-                )
-            return Response(
-                {'errors': 'Вы уже добавили рецепт в избранное.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if request.method == 'DELETE':
-            get_object_or_404(
-                ShoppingCart, user=request.user, recipe=recipe
-            ).delete()
-            return Response(
-                {'detail': 'Вы удалили рецепт из изрбранного.'},
-                status=status.HTTP_204_NO_CONTENT
-            )
+    def shopping_cart(self, request, pk):
+        return post_and_delete(
+            ShopingCartRecipeSerializer, ShoppingCart, request, pk
+        )
 
     @action(
         methods=['GET'],
