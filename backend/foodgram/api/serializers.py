@@ -4,8 +4,10 @@ from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers, validators
 
-from recipes.models import (FavoriteRecipe, Ingredient, Recipe,
-                            RecipeIngredient, ShoppingCart, Tag)
+from recipes.models import (
+    FavoriteRecipe, Ingredient, Recipe,   # Почему-то isort так сортирует импорты, думал раз он так их делает, значит норм, извеняюсь)
+    RecipeIngredient, ShoppingCart, Tag
+)
 from users.models import User
 
 FIELDS_USER = (
@@ -46,11 +48,11 @@ class UserPOSTSerializer(UserCreateSerializer):
         }
 
     def validate_username(self, obj):
-        invalid_username = [
+        invalid_usernames = [
             'me', 'set_password',
             'subscriptions', 'subscribe'
         ]
-        if self.initial_data.get('username') in invalid_username:
+        if self.initial_data.get('username') in invalid_usernames:
             raise serializers.ValidationError(
                 {'username': 'Вы не можете использовать этот username.'}
             )
@@ -95,7 +97,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
-        read_only_fields = ('id', 'name', 'image', 'cooking_time')
+        read_only_fields = fields
 
 
 class SubscriptionsGETSerializer(serializers.ModelSerializer):
@@ -322,7 +324,8 @@ class RecipePOSTserializer(serializers.ModelSerializer):
         ingredients = validated_data.pop('ingredients')
         RecipeIngredient.objects.filter(
             recipe=instance,
-            ingredient__in=instance.ingredients.all()).delete()
+            ingredient__in=instance.ingredients.all()
+        ).delete()
         self.tags_ingredients_set(instance, tags, ingredients)
         instance.save()
         return instance

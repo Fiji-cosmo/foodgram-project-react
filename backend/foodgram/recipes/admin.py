@@ -1,7 +1,8 @@
 from django.contrib import admin
 
-from .models import (FavoriteRecipe, Ingredient, Recipe, RecipeIngredient,
-                     ShoppingCart, Tag)
+from .models import (
+    FavoriteRecipe, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag
+)
 
 EMPTY_VALUE_DISPLAY = '-пусто-'
 

@@ -8,20 +8,21 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from recipes.models import (FavoriteRecipe, Ingredient, Recipe,
-                            RecipeIngredient, ShoppingCart, Tag)
+from recipes.models import (
+    FavoriteRecipe, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag
+)
 from users.models import Subscribe, User
 
 from .filters import RecipeFilter
 from .mixins import TegIngredientViewSet
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
-from .serializers import (FavoriteRecipeSerializer, IngredientSerializer,
-                          RecipeGETSerializer, RecipePOSTserializer,
-                          SetPasswordSerializer, ShopingCartRecipeSerializer,
-                          SubscriptionsGETSerializer,
-                          SubscriptionsPOSTSerializer, TagSerializer,
-                          UserGETSerializer, UserPOSTSerializer)
+from .serializers import (
+    FavoriteRecipeSerializer, IngredientSerializer, RecipeGETSerializer,
+    RecipePOSTserializer, SetPasswordSerializer, ShopingCartRecipeSerializer,
+    SubscriptionsGETSerializer, SubscriptionsPOSTSerializer, TagSerializer,
+    UserGETSerializer, UserPOSTSerializer
+)
 from .utils import post_and_delete
 
 
@@ -132,8 +133,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
+    # Да я наверное не правильно понял значит, просто в пачке видел треды ребят, на похожих случаях кто-то говорил про annotate()
     def favorite(self, request, pk):
-        # Я так понял нужно использовать метод annotate(), попытался понять, но так и не получилось пока-что
         return post_and_delete(
             FavoriteRecipeSerializer, FavoriteRecipe, request, pk
         )

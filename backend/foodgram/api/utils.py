@@ -8,8 +8,10 @@ from recipes.models import Recipe
 def post_and_delete(serializer_, model, request, recipe_id):
     """Опция добавления и удаления рецепта."""
     user = request.user
-    data = {'user': user.id,
-            'recipe': recipe_id}
+    data = {
+        'user': user.id,
+        'recipe': recipe_id
+    }
     serializer = serializer_(data=data, context={'request': request})
 
     if request.method == 'POST':
