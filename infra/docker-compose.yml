@@ -14,7 +14,7 @@ services:
       - .env
   
   backend:
-      image: fijicosmo/foodgram_backend:v1
+      image: fijicosmo/foodgram_backend:latest
       restart: always
       volumes:
         - static_value:/app/static/
