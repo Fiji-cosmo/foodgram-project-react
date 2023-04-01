@@ -133,7 +133,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
-    # Да я наверное не правильно понял значит, просто в пачке видел треды ребят, на похожих случаях кто-то говорил про annotate()
     def favorite(self, request, pk):
         return post_and_delete(
             FavoriteRecipeSerializer, FavoriteRecipe, request, pk

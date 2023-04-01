@@ -5,7 +5,7 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers, validators
 
 from recipes.models import (
-    FavoriteRecipe, Ingredient, Recipe,   # Почему-то isort так сортирует импорты, думал раз он так их делает, значит норм, извеняюсь)
+    FavoriteRecipe, Ingredient, Recipe,
     RecipeIngredient, ShoppingCart, Tag
 )
 from users.models import User
