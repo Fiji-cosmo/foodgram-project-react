@@ -1,9 +1,9 @@
+from urllib.parse import unquote
 from django.db.models import Sum
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from rest_framework import filters, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -13,8 +13,7 @@ from recipes.models import (
 )
 from users.models import Subscribe, User
 
-from .filters import RecipeFilter
-from .mixins import TegIngredientViewSet
+from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
@@ -23,7 +22,7 @@ from .serializers import (
     SubscriptionsGETSerializer, SubscriptionsPOSTSerializer, TagSerializer,
     UserGETSerializer, UserPOSTSerializer
 )
-from .utils import post_and_delete
+from .utils import post_and_delete, download_txt
 
 
 class CustomUserViewSet(UserViewSet):
@@ -96,7 +95,7 @@ class CustomUserViewSet(UserViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class TagViewSet(TegIngredientViewSet):
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
     """Вьюсет для тегов."""
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
@@ -104,14 +103,35 @@ class TagViewSet(TegIngredientViewSet):
     pagination_class = None
 
 
-class IngredientViewSet(TegIngredientViewSet):
+class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     """Вьюсет для ингредиентов."""
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
     pagination_class = None
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('^name',)
+    filter_backends = (IngredientFilter,)
+
+    def get_queryset(self):
+        """Получает ингредиент в соответствии с параметрами запроса."""
+        name = self.request.query_params.get('name')
+        queryset = self.queryset
+        if name:
+            if name[0] == '%':
+                name = unquote(name)
+            else:
+                name = name.translatestr.maketrans(
+                    'qwertyuiop[]asdfghjkl;\'zxcvbnm,./',
+                    'йцукенгшщзхъфывапролджэячсмитьбю.'
+                )
+            name = name.lower()
+            start_queryset = list(queryset.filter(name__istartswith=name))
+            ingridients_set = set(start_queryset)
+            cont_queryset = queryset.filter(name__icontains=name)
+            start_queryset.extend(
+                [ing for ing in cont_queryset if ing not in ingridients_set]
+            )
+            queryset = start_queryset
+        return queryset
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -154,22 +174,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=False,
         permission_classes=(IsAuthenticated,)
     )
-    def download_shopping_cart(self, request, **kwargs):
-        ingredients = (
-            RecipeIngredient.objects
-            .filter(recipe__shopping_recipe__user=request.user)
-            .annotate(total_amount=Sum('amount'))
-            .values_list(
-                'ingredient__name',
-                'total_amount',
-                'ingredient__measurement_unit',
-            )
-        )
-        filename = 'shopping_cart.txt'
-        file_list = []
-        [file_list.append(
-            '{} - {} {}.'.format(*ingredient)) for ingredient in ingredients]
-        file = HttpResponse('Cписок покупок:\n' + '\n'.join(file_list),
-                            content_type='text/plain')
-        file['Content-Disposition'] = (f'attachment; filename={filename}')
-        return file
+    def download_shopping_cart(self, request):
+        ingredients = RecipeIngredient.objects.filter(
+            recipe__shopping_list__user=self.request.user
+        ).values(
+            'ingredient__name',
+            'ingredient__measurement_unit'
+        ).order_by('ingredient__name').annotate(amount=Sum('amount'))
+        return download_txt(self, request, ingredients)

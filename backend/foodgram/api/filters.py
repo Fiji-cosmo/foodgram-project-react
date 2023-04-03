@@ -4,6 +4,19 @@ from recipes.models import Recipe, Tag
 from users.models import User
 
 
+class IngredientFilter(filters.BaseFilterBackend):
+    '''
+    Фильтр для поиска ингредиента по начальным буквам. Регистронезависимый.
+    '''
+    allowed_fields = ('name',)
+
+    def filter_queryset(self, request, queryset, view):
+        if 'name' not in request.query_params:
+            return queryset
+        desired = request.query_params['name']
+        return queryset.filter(name__istartswith=desired).order_by('name')
+
+
 class RecipeFilter(FilterSet):
     """Фильтр для рецептов."""
     author = filters.ModelChoiceFilter(queryset=User.objects.all())
