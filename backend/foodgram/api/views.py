@@ -159,8 +159,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .filter(recipe__shopping_recipe__user=request.user)
             .values('ingredient')
             .annotate(total_amount=Sum('amount'))
-            .values_list('ingredient__name', 'total_amount',
-                         'ingredient__measurement_unit')
+            .values_list(
+                'ingredient__name',
+                'total_amount',
+                'ingredient__measurement_unit'
+            )
         )
         file_name = 'shopping_cart.txt'
         file_list = []
