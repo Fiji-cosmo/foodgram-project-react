@@ -1,20 +1,16 @@
 from django_filters.rest_framework import FilterSet, filters
+from rest_framework.filters import SearchFilter
 
-from recipes.models import Recipe, Tag
+from recipes.models import Recipe, Tag, Ingredient
 from users.models import User
 
 
-class IngredientFilter(filters.BaseFilterBackend):
-    '''
-    Фильтр для поиска ингредиента по начальным буквам. Регистронезависимый.
-    '''
-    allowed_fields = ('name',)
+class IngredientSearch(SearchFilter):
+    search_param = 'name'
 
-    def filter_queryset(self, request, queryset, view):
-        if 'name' not in request.query_params:
-            return queryset
-        desired = request.query_params['name']
-        return queryset.filter(name__istartswith=desired).order_by('name')
+    class Meta:
+        model = Ingredient
+        fields = ('name',)
 
 
 class RecipeFilter(FilterSet):

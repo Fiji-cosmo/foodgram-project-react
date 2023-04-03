@@ -1,5 +1,5 @@
-from urllib.parse import unquote
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
@@ -13,7 +13,7 @@ from recipes.models import (
 )
 from users.models import Subscribe, User
 
-from .filters import IngredientFilter, RecipeFilter
+from .filters import IngredientSearch, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
@@ -22,7 +22,7 @@ from .serializers import (
     SubscriptionsGETSerializer, SubscriptionsPOSTSerializer, TagSerializer,
     UserGETSerializer, UserPOSTSerializer
 )
-from .utils import post_and_delete, download_txt
+from .utils import post_and_delete
 
 
 class CustomUserViewSet(UserViewSet):
@@ -109,29 +109,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
     pagination_class = None
-    filter_backends = (IngredientFilter,)
-
-    def get_queryset(self):
-        """Получает ингредиент в соответствии с параметрами запроса."""
-        name = self.request.query_params.get('name')
-        queryset = self.queryset
-        if name:
-            if name[0] == '%':
-                name = unquote(name)
-            else:
-                name = name.translatestr.maketrans(
-                    'qwertyuiop[]asdfghjkl;\'zxcvbnm,./',
-                    'йцукенгшщзхъфывапролджэячсмитьбю.'
-                )
-            name = name.lower()
-            start_queryset = list(queryset.filter(name__istartswith=name))
-            ingridients_set = set(start_queryset)
-            cont_queryset = queryset.filter(name__icontains=name)
-            start_queryset.extend(
-                [ing for ing in cont_queryset if ing not in ingridients_set]
-            )
-            queryset = start_queryset
-        return queryset
+    filter_backends = (IngredientSearch,)
+    search_fields = ('^name',)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -174,11 +153,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
         detail=False,
         permission_classes=(IsAuthenticated,)
     )
-    def download_shopping_cart(self, request):
-        ingredients = RecipeIngredient.objects.filter(
-            recipe__shopping_list__user=self.request.user
-        ).values(
-            'ingredient__name',
-            'ingredient__measurement_unit'
-        ).order_by('ingredient__name').annotate(amount=Sum('amount'))
-        return download_txt(self, request, ingredients)
+    def download_shopping_cart(self, request, **kwargs):
+        ingredients = (
+            RecipeIngredient.objects
+            .filter(recipe__shopping_recipe__user=request.user)
+            .values('ingredient')
+            .annotate(total_amount=Sum('amount'))
+            .values_list('ingredient__name', 'total_amount',
+                         'ingredient__measurement_unit')
+        )
+        file_name = 'shopping_cart.txt'
+        file_list = []
+        [file_list.append(
+            '{} - {} {}.'.format(*ingredient)) for ingredient in ingredients]
+        file = HttpResponse('Cписок покупок:\n' + '\n'.join(file_list),
+                            content_type='text/plain')
+        file['Content-Disposition'] = (f'attachment; filename={file_name}')
+        return file
