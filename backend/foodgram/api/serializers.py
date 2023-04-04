@@ -363,6 +363,7 @@ class FavoriteRecipeSerializer(serializers.ModelSerializer):
 
 
 class ShopingCartRecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор добавления рецептов в список покупок."""
 
     class Meta:
         model = ShoppingCart

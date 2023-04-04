@@ -9,8 +9,7 @@ EMPTY_VALUE_DISPLAY = '-пусто-'
 
 class TagAdmin(admin.ModelAdmin):
     list_display = ('pk', 'name', 'color', 'slug')
-    search_fields = ('name', 'color', 'slug')
-    list_filter = ('name', 'color', 'slug',)
+    search_fields = ('name', 'slug',)
     ordering = ('name',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
@@ -24,34 +23,39 @@ class IngredientAdmin(admin.ModelAdmin):
 
 
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'name', 'author', 'count_favorites')
-    search_fields = ('username', 'email', 'first_name', 'last_name',)
-    list_filter = ('author', 'name', 'tags',)
+    list_display = (
+        'pk', 'name', 'author', 'count_favorites', 'cooking_time', 'get_tags'
+    )
+    readonly_fields = ('count_favorites',)
+    list_filter = ('name', 'tags',)
+    search_fields = ('name', 'cooking_time', 'author__email')
     ordering = ('name',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
+    @admin.display(description='Тэги')
+    def get_tags(self, obj):
+        return ', '.join(_.name for _ in obj.tags.all())
+    empty_value_display = EMPTY_VALUE_DISPLAY
+
+    @admin.display(description='Кол-во в избранных')
     def count_favorites(self, obj):
         return obj.favorite_recipe.count()
 
 
 class RecipeIngredientAdmin(admin.ModelAdmin):
     list_display = ('pk', 'recipe', 'ingredient', 'amount')
-    search_fields = ('recipe', 'ingredient',)
     list_filter = ('recipe', 'ingredient',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
 
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'recipe')
-    search_fields = ('user', 'recipe',)
     list_filter = ('user', 'recipe',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
 
 class ShoppingAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'recipe')
-    search_fields = ('user', 'recipe',)
-    list_filter = ('user', 'recipe',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
 
