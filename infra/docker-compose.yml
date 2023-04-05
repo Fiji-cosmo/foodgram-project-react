@@ -14,10 +14,10 @@ services:
       - .env
   
   backend:
-      # image: fijicosmo/foodgram_backend:latest
-      build:
-        context: ../backend
-        dockerfile: Dockerfile
+      image: fijicosmo/foodgram_backend:latest
+      # build:
+      #  context: ../backend
+      #  dockerfile: Dockerfile
       restart: always
       volumes:
         - static_value:/app/static/
